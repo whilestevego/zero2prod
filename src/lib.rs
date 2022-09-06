@@ -4,21 +4,8 @@ pub mod startup;
 
 use std::{io, net::TcpListener};
 
-use actix_web::{dev::Server, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
-
-async fn health_check(_req: HttpRequest) -> impl Responder {
-    HttpResponse::Ok()
-}
-
-#[derive(serde::Deserialize)]
-struct FormData {
-    email: String,
-    name: String,
-}
-
-async fn subscribe(_form: web::Form<FormData>) -> HttpResponse {
-    HttpResponse::Ok().finish()
-}
+use actix_web::{dev::Server, web, App, HttpServer};
+use routes::{health_check, subscribe};
 
 pub fn run(listener: TcpListener) -> Result<Server, io::Error> {
     let server = HttpServer::new(|| {
