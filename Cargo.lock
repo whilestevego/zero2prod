@@ -2473,6 +2473,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-bunyan-formatter",
+ "tracing-log",
  "tracing-subscriber",
  "uuid",
 ]
