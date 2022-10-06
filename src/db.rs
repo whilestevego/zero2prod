@@ -25,13 +25,13 @@ impl DB {
 
         let name = url
             .path()
-            .strip_prefix("/")
+            .strip_prefix('/')
             .unwrap_or(&default_self.name)
             .into();
 
         let password = Secret::new(
             url.password()
-                .unwrap_or(&default_self.password.expose_secret())
+                .unwrap_or_else(|| default_self.password.expose_secret())
                 .into(),
         );
 

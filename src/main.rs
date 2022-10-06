@@ -22,7 +22,7 @@ async fn main() -> std::io::Result<()> {
 
     let db = DB::from_url(database.url.expose_secret());
 
-    let db_pool = PgPool::connect(&db.url().expose_secret())
+    let db_pool = PgPool::connect(db.url().expose_secret())
         .await
         .expect("Failed to connect to Postgres");
 

@@ -55,7 +55,7 @@ async fn spawn_app() -> TestApp {
 
 pub async fn configure_database(db: &DB) -> PgPool {
     // Create Database
-    let mut connection = PgConnection::connect(&db.url_without_db().expose_secret())
+    let mut connection = PgConnection::connect(db.url_without_db().expose_secret())
         .await
         .expect("Failed to connect to Postgres");
 
@@ -65,7 +65,7 @@ pub async fn configure_database(db: &DB) -> PgPool {
         .expect("Failed to create database");
 
     // Migrate Database
-    let connection_pool = PgPool::connect(&db.url().expose_secret())
+    let connection_pool = PgPool::connect(db.url().expose_secret())
         .await
         .expect("Failed to connect to Postgres");
 
@@ -102,7 +102,7 @@ async fn health_check_works() {
 async fn subscribe_returns_a_200_for_valid_form_data() {
     let TestApp { address, .. } = spawn_app().await;
     let configuration = get_configuration().expect("Failed to read configuration");
-    let mut connection = PgConnection::connect(&configuration.database.url.expose_secret())
+    let mut connection = PgConnection::connect(configuration.database.url.expose_secret())
         .await
         .expect("Failed to connect to Postgres");
     let client = reqwest::Client::new();
