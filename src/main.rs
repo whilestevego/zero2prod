@@ -3,6 +3,7 @@ use std::net::TcpListener;
 
 use zero2prod::{
     configuration::{get_configuration, Settings},
+    db::DB,
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -18,7 +19,9 @@ async fn main() -> std::io::Result<()> {
         ..
     } = get_configuration().expect("Failed to read configuration");
 
-    let db_pool = PgPool::connect(&database.url)
+    let db = DB::from_url(database.url);
+
+    let db_pool = PgPool::connect(&db.url())
         .await
         .expect("Failed to connect to Postgres");
 
