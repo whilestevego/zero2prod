@@ -1,3 +1,4 @@
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use std::net::TcpListener;
 
@@ -21,7 +22,7 @@ async fn main() -> std::io::Result<()> {
 
     let db = DB::from_url(database.url);
 
-    let db_pool = PgPool::connect(&db.url())
+    let db_pool = PgPool::connect(&db.url().expose_secret())
         .await
         .expect("Failed to connect to Postgres");
 
