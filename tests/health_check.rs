@@ -40,7 +40,7 @@ async fn spawn_app() -> TestApp {
 
     let Settings { database, .. } = get_configuration().expect("Failed to read configuration");
 
-    let mut db = DB::from_url(database.url);
+    let mut db = DB::from_url(database.url.expose_secret());
 
     db.name = Uuid::new_v4().to_string();
 
@@ -102,7 +102,7 @@ async fn health_check_works() {
 async fn subscribe_returns_a_200_for_valid_form_data() {
     let TestApp { address, .. } = spawn_app().await;
     let configuration = get_configuration().expect("Failed to read configuration");
-    let mut connection = PgConnection::connect(&configuration.database.url)
+    let mut connection = PgConnection::connect(&configuration.database.url.expose_secret())
         .await
         .expect("Failed to connect to Postgres");
     let client = reqwest::Client::new();

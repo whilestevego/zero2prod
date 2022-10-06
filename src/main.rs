@@ -20,7 +20,7 @@ async fn main() -> std::io::Result<()> {
         ..
     } = get_configuration().expect("Failed to read configuration");
 
-    let db = DB::from_url(database.url);
+    let db = DB::from_url(database.url.expose_secret());
 
     let db_pool = PgPool::connect(&db.url().expose_secret())
         .await

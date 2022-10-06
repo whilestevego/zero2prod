@@ -1,4 +1,5 @@
 use config::{Config, ConfigError, File};
+use secrecy::Secret;
 // use secrecy::{ExposeSecret, Secret};
 
 #[derive(serde::Deserialize, Debug)]
@@ -9,7 +10,7 @@ pub struct Settings {
 
 #[derive(serde::Deserialize, Debug)]
 pub struct DatabaseSettings {
-    pub url: String,
+    pub url: Secret<String>,
 }
 
 pub fn get_configuration() -> Result<Settings, ConfigError> {
