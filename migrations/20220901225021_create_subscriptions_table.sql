@@ -1,3 +1,5 @@
+CREATE EXTENSION pgcrypto;
+
 -- Create Subscriptions Table
 CREATE TABLE subscriptions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
