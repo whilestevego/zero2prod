@@ -70,7 +70,6 @@ jobs:
           ./scripts/init_db.sh
       - name: Check sqlx-data.json is up-to-date
         run: |
-          touch ./src/lib.rs && cargo sqlx prepare -- --bin zero2prod
           touch ./src/lib.rs && cargo sqlx prepare --check -- --bin zero2prod
       - name: Run cargo test
         uses: actions-rs/cargo@v1
