@@ -73,8 +73,6 @@ jobs:
           cargo sqlx prepare --check -- --lib
       - name: Run cargo test
         uses: actions-rs/cargo@v1
-        env:
-          TEST_LOG: true
         with:
           command: test
 
