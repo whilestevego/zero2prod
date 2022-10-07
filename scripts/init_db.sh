@@ -16,9 +16,16 @@ if ! [ -x "$(command -v sqlx)" ]; then
   echo >&2 "to install it."
 fi
 
+RETRY=5
 until psql $DATABASE_URL -c '\q'; do
+  RETRY=$RETRY - 1
   >&2 echo "Postgres is still unavailable - sleeping"
   sleep 1
+
+  if [[ $RETRY -le 0 ]]; then
+    echo >&2 "Error: could not connect to Postgres."
+    exit 1
+  fi 
 done
 
 sqlx database create
