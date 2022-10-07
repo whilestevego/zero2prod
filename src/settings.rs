@@ -49,20 +49,22 @@ impl TryFrom<String> for AppEnv {
     }
 }
 
-pub fn get_configuration() -> Result<Settings, ConfigError> {
-    let base_path = env::current_dir().expect("Failed to determine the current directory");
-    let config_dir = base_path.join("config");
-    let app_env: AppEnv = env::var("APP_ENV")
-        .unwrap_or_else(|_| "local".into())
-        .try_into()
-        .expect("Failed to parse APP_ENV.");
+impl Settings {
+    pub fn load() -> Result<Self, ConfigError> {
+        let base_path = env::current_dir().expect("Failed to determine the current directory");
+        let config_dir = base_path.join("config");
+        let app_env: AppEnv = env::var("APP_ENV")
+            .unwrap_or_else(|_| "local".into())
+            .try_into()
+            .expect("Failed to parse APP_ENV.");
 
-    Config::builder()
-        .add_source(File::from(config_dir.join("base")).required(true))
-        .add_source(File::from(config_dir.join(app_env.as_str())).required(true))
-        .set_override_option("database.url", env::var("DATABASE_URL").ok())
-        .unwrap()
-        .build()
-        .unwrap()
-        .try_deserialize()
+        Config::builder()
+            .add_source(File::from(config_dir.join("base")).required(true))
+            .add_source(File::from(config_dir.join(app_env.as_str())).required(true))
+            .set_override_option("database.url", env::var("DATABASE_URL").ok())
+            .unwrap()
+            .build()
+            .unwrap()
+            .try_deserialize()
+    }
 }

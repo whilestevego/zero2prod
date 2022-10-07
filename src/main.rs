@@ -3,8 +3,8 @@ use sqlx::PgPool;
 use std::net::TcpListener;
 
 use zero2prod::{
-    configuration::{get_configuration, ApplicationSettings, Settings},
     db::DB,
+    settings::{ApplicationSettings, Settings},
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -18,7 +18,7 @@ async fn main() -> std::io::Result<()> {
         application: ApplicationSettings { host, port },
         database,
         ..
-    } = get_configuration().expect("Failed to read configuration");
+    } = Settings::load().expect("Failed to read configuration");
 
     let db = DB::from_url(database.url.expose_secret());
 

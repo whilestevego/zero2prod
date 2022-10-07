@@ -5,8 +5,8 @@ use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
 use zero2prod::{
-    configuration::{get_configuration, Settings},
     db::DB,
+    settings::Settings,
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -38,7 +38,7 @@ async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{port}");
 
-    let Settings { database, .. } = get_configuration().expect("Failed to read configuration");
+    let Settings { database, .. } = Settings::load().expect("Failed to read configuration");
 
     let mut db = DB::from_url(database.url.expose_secret());
 
