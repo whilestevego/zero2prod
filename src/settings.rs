@@ -63,6 +63,7 @@ impl ApplicationSettings {
 #[derive(serde::Deserialize, Debug)]
 pub struct DatabaseSettings {
     pub url: Secret<String>,
+    pub require_ssl: bool,
 }
 
 impl Settings {

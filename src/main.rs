@@ -1,4 +1,3 @@
-use secrecy::ExposeSecret;
 use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 
@@ -16,11 +15,11 @@ async fn main() -> std::io::Result<()> {
 
     let Settings {
         application: ApplicationSettings { host, port, .. },
-        database,
+        ref database,
         ..
     } = Settings::load().expect("Failed to read configuration");
 
-    let db = DB::from_url(database.url.expose_secret());
+    let db: DB = database.into();
 
     let db_pool = PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(2))

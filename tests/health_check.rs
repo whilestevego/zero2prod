@@ -38,9 +38,9 @@ async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{port}");
 
-    let Settings { database, .. } = Settings::load().expect("Failed to read configuration");
+    let Settings { ref database, .. } = Settings::load().expect("Failed to read configuration");
 
-    let mut db = DB::from_url(database.url.expose_secret());
+    let mut db: DB = database.into();
 
     db.name = Uuid::new_v4().to_string();
 

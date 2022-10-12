@@ -1,6 +1,8 @@
 use reqwest::Url;
 use secrecy::{ExposeSecret, Secret};
-use sqlx::postgres::PgConnectOptions;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
+
+use crate::settings::DatabaseSettings;
 
 #[derive(Debug)]
 pub struct DB {
@@ -9,6 +11,7 @@ pub struct DB {
     pub password: Secret<String>,
     pub host: String,
     pub port: u16,
+    pub ssl_mode: PgSslMode,
 }
 
 impl DB {
@@ -22,17 +25,20 @@ impl DB {
     /// https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
     pub fn from_url<S: Into<String> + Sized>(database_uri: S) -> Self {
         let url = Url::parse(&database_uri.into()).expect("Couldn't parse url");
-        let default_self = Self::default();
+        let Self {
+            name,
+            password,
+            host,
+            port,
+            ssl_mode,
+            ..
+        } = Self::default();
 
-        let name = url
-            .path()
-            .strip_prefix('/')
-            .unwrap_or(&default_self.name)
-            .into();
+        let name = url.path().strip_prefix('/').unwrap_or(&name).into();
 
         let password = Secret::new(
             url.password()
-                .unwrap_or_else(|| default_self.password.expose_secret())
+                .unwrap_or_else(|| password.expose_secret())
                 .into(),
         );
 
@@ -40,9 +46,14 @@ impl DB {
             name,
             username: url.username().into(),
             password,
-            host: url.host_str().unwrap_or(&default_self.host).into(),
-            port: url.port().unwrap_or(default_self.port),
+            host: url.host_str().unwrap_or(&host).into(),
+            port: url.port().unwrap_or(port),
+            ssl_mode,
         }
+    }
+
+    pub fn set_ssl_mode(self, ssl_mode: PgSslMode) -> Self {
+        Self { ssl_mode, ..self }
     }
 
     pub fn url(&self) -> Secret<String> {
@@ -87,6 +98,19 @@ impl Default for DB {
             password: Secret::new("".into()),
             host: "localhost".into(),
             port: 5432,
+            ssl_mode: PgSslMode::Prefer,
         }
+    }
+}
+
+impl From<&DatabaseSettings> for DB {
+    fn from(database_settings: &DatabaseSettings) -> Self {
+        Self::from_url(database_settings.url.expose_secret()).set_ssl_mode(
+            if database_settings.require_ssl {
+                PgSslMode::Require
+            } else {
+                PgSslMode::Prefer
+            },
+        )
     }
 }
