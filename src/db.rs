@@ -1,6 +1,9 @@
 use reqwest::Url;
 use secrecy::{ExposeSecret, Secret};
-use sqlx::postgres::{PgConnectOptions, PgSslMode};
+use sqlx::{
+    postgres::{PgConnectOptions, PgSslMode},
+    ConnectOptions,
+};
 
 use crate::settings::DatabaseSettings;
 
@@ -78,11 +81,14 @@ impl DB {
     }
 
     pub fn connection_options_without_db(&self) -> PgConnectOptions {
-        PgConnectOptions::new()
+        let mut options = PgConnectOptions::new()
             .host(&self.host)
             .username(&self.username)
             .password(self.password.expose_secret())
-            .port(self.port)
+            .port(self.port);
+
+        options.log_statements(tracing::log::LevelFilter::Trace);
+        options
     }
 
     pub fn connection_options(&self) -> PgConnectOptions {
