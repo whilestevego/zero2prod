@@ -9,6 +9,10 @@ name: zero2prod
 region: sfo
 services:
   - name: zero2prod
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${newsletter.DATABASE_URL}
     # Relative to the repository root
     dockerfile_path: Dockerfile
     source_dir: .
