@@ -39,7 +39,7 @@ COPY --from=builder /app/target/release/zero2prod zero2prod
 
 COPY config config
 
-ENV APP_ENV production
+ENV APPLICATION_ENV production
 
 # When `docker run` is executed, launch the binary!
 ENTRYPOINT ["./zero2prod"]
