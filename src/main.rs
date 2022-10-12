@@ -15,7 +15,7 @@ async fn main() -> std::io::Result<()> {
     init_subscriber(subscriber);
 
     let Settings {
-        application: ApplicationSettings { host, port },
+        application: ApplicationSettings { host, port, .. },
         database,
         ..
     } = Settings::load().expect("Failed to read configuration");
