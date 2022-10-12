@@ -1,5 +1,6 @@
 use reqwest::Url;
 use secrecy::{ExposeSecret, Secret};
+use sqlx::postgres::PgConnectOptions;
 
 #[derive(Debug)]
 pub struct DB {
@@ -63,6 +64,18 @@ impl DB {
             self.host,
             self.port,
         ))
+    }
+
+    pub fn connection_options_without_db(&self) -> PgConnectOptions {
+        PgConnectOptions::new()
+            .host(&self.host)
+            .username(&self.username)
+            .password(self.password.expose_secret())
+            .port(self.port)
+    }
+
+    pub fn connection_options(&self) -> PgConnectOptions {
+        self.connection_options_without_db().database(&self.name)
     }
 }
 
