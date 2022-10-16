@@ -3,6 +3,7 @@ use std::net::TcpListener;
 
 use zero2prod::{
     db::DB,
+    email_client::EmailClient,
     settings::{ApplicationSettings, Settings},
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
@@ -15,9 +16,16 @@ async fn main() -> std::io::Result<()> {
 
     let Settings {
         application: ApplicationSettings { host, port, .. },
+        email_client,
         ref database,
         ..
     } = Settings::load().expect("Failed to read configuration");
+
+    let sender_email = email_client
+        .sender_email()
+        .expect("Invalid sender email address.");
+
+    let email_client = EmailClient::new(email_client.base_url, sender_email);
 
     let db: DB = database.into();
 
@@ -29,5 +37,5 @@ async fn main() -> std::io::Result<()> {
 
     let listener = TcpListener::bind(address)?;
 
-    run(listener, db_pool)?.await
+    run(listener, db_pool, email_client)?.await
 }

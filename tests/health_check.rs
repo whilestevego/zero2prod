@@ -6,6 +6,7 @@ use std::net::TcpListener;
 use uuid::Uuid;
 use zero2prod::{
     db::DB,
+    email_client::EmailClient,
     settings::Settings,
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
@@ -38,7 +39,11 @@ async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{port}");
 
-    let Settings { ref database, .. } = Settings::load().expect("Failed to read configuration");
+    let Settings {
+        ref database,
+        email_client,
+        ..
+    } = Settings::load().expect("Failed to read configuration");
 
     let mut db: DB = database.into();
 
@@ -46,7 +51,13 @@ async fn spawn_app() -> TestApp {
 
     let db_pool = configure_database(&db).await;
 
-    let server = run(listener, db_pool.clone()).expect("Failed to bind address");
+    // Build a new email client
+    let sender_email = email_client
+        .sender_email()
+        .expect("Invalid sender email address.");
+    let email_client = EmailClient::new(email_client.base_url, sender_email);
+
+    let server = run(listener, db_pool.clone(), email_client).expect("Failed to bind address");
 
     let _ = tokio::spawn(server);
 

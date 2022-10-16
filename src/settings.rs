@@ -4,6 +4,8 @@ use config::{Config, ConfigError, Environment, File};
 use secrecy::Secret;
 use serde_aux::field_attributes::deserialize_number_from_string;
 
+use crate::domain::SubscriberEmail;
+
 #[derive(serde::Deserialize, Debug)]
 pub enum Env {
     Local,
@@ -44,6 +46,7 @@ impl From<Result<String, env::VarError>> for Env {
 pub struct Settings {
     pub application: ApplicationSettings,
     pub database: DatabaseSettings,
+    pub email_client: EmailClientSettings,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -57,6 +60,18 @@ pub struct ApplicationSettings {
 impl ApplicationSettings {
     pub fn env(&self) -> Env {
         self.env.as_str().into()
+    }
+}
+
+#[derive(serde::Deserialize, Debug)]
+pub struct EmailClientSettings {
+    pub base_url: String,
+    pub sender_email: String,
+}
+
+impl EmailClientSettings {
+    pub fn sender_email(&self) -> Result<SubscriberEmail, String> {
+        SubscriberEmail::parse(self.sender_email.clone())
     }
 }
 
