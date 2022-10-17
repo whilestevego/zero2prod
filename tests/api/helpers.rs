@@ -5,10 +5,9 @@ use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
 use zero2prod::{
+    application::Application,
     db::DB,
-    email_client::EmailClient,
     settings::Settings,
-    startup::run,
     telemetry::{get_subscriber, init_subscriber},
 };
 
@@ -35,38 +34,25 @@ pub struct TestApp {
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
 
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
-    let port = listener.local_addr().unwrap().port();
+    let tcp_listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
+    let port = tcp_listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{port}");
 
-    let Settings {
-        ref database,
-        email_client,
-        ..
-    } = Settings::load().expect("Failed to read configuration");
+    let settings = Settings::load().expect("Failed to read configuration");
 
-    let mut db: DB = database.into();
+    let mut db: DB = (&settings.database).into();
 
     db.name = Uuid::new_v4().to_string();
 
     let db_pool = configure_database(&db).await;
 
-    // Build a new email client
-    let sender_email = email_client
-        .sender_email()
-        .expect("Invalid sender email address.");
+    let application = Application::builder_from_settings(settings)
+        .expect("Couldn't load application from settings")
+        .set_db_pool(db_pool.clone())
+        .set_tcp_listener(tcp_listener)
+        .build();
 
-    let timeout = email_client.timeout();
-    let email_client = EmailClient::new(
-        email_client.base_url,
-        sender_email,
-        email_client.authorization_token,
-        timeout,
-    );
-
-    let server = run(listener, db_pool.clone(), email_client).expect("Failed to bind address");
-
-    let _ = tokio::spawn(server);
+    let _ = tokio::spawn(application.run_until_stopped());
 
     TestApp { address, db_pool }
 }
@@ -83,14 +69,14 @@ async fn configure_database(db: &DB) -> PgPool {
         .expect("Failed to create database");
 
     // Migrate Database
-    let connection_pool = PgPool::connect(db.url().expose_secret())
+    let db_pool = PgPool::connect(db.url().expose_secret())
         .await
         .expect("Failed to connect to Postgres");
 
     sqlx::migrate!("./migrations")
-        .run(&connection_pool)
+        .run(&db_pool)
         .await
         .expect("Failed to migrate the database");
 
-    connection_pool
+    db_pool
 }
