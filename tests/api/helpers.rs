@@ -46,8 +46,7 @@ pub async fn spawn_app() -> TestApp {
 
     let db_pool = configure_database(&db).await;
 
-    let application = Application::builder_from_settings(settings)
-        .expect("Couldn't load application from settings")
+    let application = Application::builder()
         .set_db_pool(db_pool.clone())
         .set_tcp_listener(tcp_listener)
         .build();

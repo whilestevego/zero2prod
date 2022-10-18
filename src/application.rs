@@ -10,53 +10,22 @@ use actix_web::{dev::Server, web, App, HttpServer};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing_actix_web::TracingLogger;
 
+#[derive(Debug)]
 pub struct ApplicationBuilder {
+    settings: Settings,
     db_pool: Option<PgPool>,
     email_client: Option<EmailClient>,
     tcp_listener: Option<TcpListener>,
-    host: Option<String>,
-    port: Option<u16>,
 }
 
 impl ApplicationBuilder {
-    pub fn from_settings(settings: Settings) -> Result<Self, std::io::Error> {
-        let Settings {
-            application: ApplicationSettings { host, port, .. },
-            email_client,
-            ref database,
-            ..
-        } = settings;
-
-        let sender_email = email_client
-            .sender_email()
-            .expect("Invalid sender email address.");
-
-        let timeout = email_client.timeout();
-
-        let email_client = EmailClient::new(
-            email_client.base_url,
-            sender_email,
-            email_client.authorization_token,
-            timeout,
-        );
-
-        let db: DB = database.into();
-
-        let db_pool = PgPoolOptions::new()
-            .acquire_timeout(std::time::Duration::from_secs(2))
-            .connect_lazy_with(db.connection_options());
-
-        Ok(Self {
-            db_pool: Some(db_pool),
-            email_client: Some(email_client),
-            host: Some(host),
-            port: Some(port),
-            tcp_listener: None,
-        })
-    }
-
     pub fn set_db_pool(mut self, db_pool: PgPool) -> Self {
         self.db_pool = Some(db_pool);
+        self
+    }
+
+    pub fn set_email_client(mut self, email_client: EmailClient) -> Self {
+        self.email_client = Some(email_client);
         self
     }
 
@@ -67,30 +36,67 @@ impl ApplicationBuilder {
 
     pub fn build(self) -> Application {
         let Self {
+            settings,
             db_pool,
             email_client,
-            host,
-            port,
             tcp_listener,
         } = self;
 
-        // TODO: Do proper error handling here
+        let db_pool = db_pool.unwrap_or_else(|| {
+            let db: DB = (&settings.database).into();
+
+            PgPoolOptions::new()
+                .acquire_timeout(std::time::Duration::from_secs(2))
+                .connect_lazy_with(db.connection_options())
+        });
+
+        let email_client = email_client.unwrap_or_else(|| {
+            let email_client = &settings.email_client;
+            EmailClient::new(
+                email_client.base_url.clone(),
+                settings
+                    .email_client
+                    .sender_email()
+                    .expect("Invalid sender email address."),
+                email_client.authorization_token.clone(),
+                email_client.timeout(),
+            )
+        });
+
+        let tcp_listener = tcp_listener.unwrap_or_else(|| {
+            let Settings {
+                application:
+                    ApplicationSettings {
+                        ref host, ref port, ..
+                    },
+                ..
+            } = settings;
+
+            let address = format!("{host}:{port}");
+
+            TcpListener::bind(&address)
+                .unwrap_or_else(|_| panic!("Couldn't bind TCP listener to {}", &address))
+        });
+
         Application {
-            db_pool: db_pool.unwrap(),
-            tcp_listener: tcp_listener.unwrap_or_else(|| {
-                let host = host.unwrap();
-                let port = port.unwrap();
-
-                let address = format!("{host}:{port}");
-
-                TcpListener::bind(&address)
-                    .unwrap_or_else(|_| panic!("Couldn't bind TCP listener to {}", &address))
-            }),
-            email_client: email_client.unwrap(),
+            db_pool,
+            email_client,
+            tcp_listener,
         }
     }
 }
 
+impl Default for ApplicationBuilder {
+    fn default() -> Self {
+        Self {
+            // TODO: Don't impl default for an operation that may fail
+            settings: Settings::load().expect("Failed to read configuration"),
+            db_pool: None,
+            email_client: None,
+            tcp_listener: None,
+        }
+    }
+}
 pub struct Application {
     db_pool: PgPool,
     tcp_listener: TcpListener,
@@ -98,8 +104,8 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn builder_from_settings(settings: Settings) -> Result<ApplicationBuilder, std::io::Error> {
-        ApplicationBuilder::from_settings(settings)
+    pub fn builder() -> ApplicationBuilder {
+        ApplicationBuilder::default()
     }
 
     pub async fn run_until_stopped(self) -> Result<(), std::io::Error> {
