@@ -39,6 +39,14 @@ impl TestApp {
             .await
             .expect("Failed to execute request.")
     }
+
+    pub async fn get_health_check(&self) -> reqwest::Response {
+        reqwest::Client::new()
+            .post(&format!("{}/health_check", &self.address))
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
 }
 
 /// Spin up an instance of our application

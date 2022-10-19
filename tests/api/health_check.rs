@@ -1,4 +1,4 @@
-use crate::helpers::{spawn_app, TestApp};
+use crate::helpers::spawn_app;
 
 // `tokio::test` is the testing equivalent of `tokio::main`.
 // It also spares you from having to specify the `#[test]` attribute.
@@ -7,15 +7,8 @@ use crate::helpers::{spawn_app, TestApp};
 // `cargo expand --test health_check` (<- name of the test file)
 #[tokio::test]
 async fn health_check_works() {
-    let TestApp { address, .. } = spawn_app().await;
-
-    let client = reqwest::Client::new();
-
-    let response = client
-        .get(&format!("{address}/health_check"))
-        .send()
-        .await
-        .expect("Failed to execute request.");
+    let app = spawn_app().await;
+    let response = app.get_health_check().await;
 
     assert!(response.status().is_success());
     assert_eq!(Some(0), response.content_length());
