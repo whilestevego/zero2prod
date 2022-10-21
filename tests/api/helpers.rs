@@ -4,6 +4,7 @@ use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
+use wiremock::MockServer;
 use zero2prod::{
     application::Application,
     db::DB,
@@ -27,9 +28,54 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
+    pub email_server: MockServer,
 }
 
 impl TestApp {
+    /// Spin up an instance of our application
+    /// and returns its address (i.e. http://localhost:XXXX)
+    pub async fn spawn() -> Self {
+        Lazy::force(&TRACING);
+
+        // Mock email server
+        let email_server = MockServer::start().await;
+
+        // Load settings and mutate with mock server URL
+        let settings = {
+            let mut settings = Settings::load().expect("Failed to read configuration");
+
+            settings.email_client.base_url = email_server.uri();
+            settings
+        };
+
+        // Test TCP listener
+        let tcp_listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
+        let port = tcp_listener.local_addr().unwrap().port();
+        let address = format!("http://127.0.0.1:{port}");
+
+        // Test DB pool with UUID db name
+
+        let mut db: DB = (&settings.database).into();
+
+        db.name = Uuid::new_v4().to_string();
+
+        let db_pool = configure_database(&db).await;
+
+        // Build and launch application
+        let application = Application::builder_from_settings(settings)
+            .set_db_pool(db_pool.clone())
+            .set_tcp_listener(tcp_listener)
+            .build();
+
+        let _ = tokio::spawn(application.run_until_stopped());
+
+        Self {
+            address,
+            db_pool,
+            email_server,
+        }
+    }
+
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
         reqwest::Client::new()
             .post(&format!("{}/subscriptions", &self.address))
@@ -42,38 +88,11 @@ impl TestApp {
 
     pub async fn get_health_check(&self) -> reqwest::Response {
         reqwest::Client::new()
-            .post(&format!("{}/health_check", &self.address))
+            .get(&format!("{}/health_check", &self.address))
             .send()
             .await
             .expect("Failed to execute request.")
     }
-}
-
-/// Spin up an instance of our application
-/// and returns its address (i.e. http://localhost:XXXX)
-pub async fn spawn_app() -> TestApp {
-    Lazy::force(&TRACING);
-
-    let tcp_listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
-    let port = tcp_listener.local_addr().unwrap().port();
-    let address = format!("http://127.0.0.1:{port}");
-
-    let settings = Settings::load().expect("Failed to read configuration");
-
-    let mut db: DB = (&settings.database).into();
-
-    db.name = Uuid::new_v4().to_string();
-
-    let db_pool = configure_database(&db).await;
-
-    let application = Application::builder()
-        .set_db_pool(db_pool.clone())
-        .set_tcp_listener(tcp_listener)
-        .build();
-
-    let _ = tokio::spawn(application.run_until_stopped());
-
-    TestApp { address, db_pool }
 }
 
 async fn configure_database(db: &DB) -> PgPool {

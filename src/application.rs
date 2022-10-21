@@ -19,6 +19,15 @@ pub struct ApplicationBuilder {
 }
 
 impl ApplicationBuilder {
+    pub fn from_settings(settings: Settings) -> Self {
+        Self {
+            settings,
+            db_pool: None,
+            email_client: None,
+            tcp_listener: None,
+        }
+    }
+
     pub fn set_db_pool(mut self, db_pool: PgPool) -> Self {
         self.db_pool = Some(db_pool);
         self
@@ -86,17 +95,6 @@ impl ApplicationBuilder {
     }
 }
 
-impl Default for ApplicationBuilder {
-    fn default() -> Self {
-        Self {
-            // TODO: Don't impl default for an operation that may fail
-            settings: Settings::load().expect("Failed to read configuration"),
-            db_pool: None,
-            email_client: None,
-            tcp_listener: None,
-        }
-    }
-}
 pub struct Application {
     db_pool: PgPool,
     tcp_listener: TcpListener,
@@ -104,8 +102,8 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn builder() -> ApplicationBuilder {
-        ApplicationBuilder::default()
+    pub fn builder_from_settings(settings: Settings) -> ApplicationBuilder {
+        ApplicationBuilder::from_settings(settings)
     }
 
     pub async fn run_until_stopped(self) -> Result<(), std::io::Error> {
