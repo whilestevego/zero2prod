@@ -1,4 +1,8 @@
 use crate::helpers::TestApp;
+use wiremock::{
+    matchers::{method, path},
+    Mock, ResponseTemplate,
+};
 
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
@@ -11,6 +15,23 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
         response.status().as_u16(),
         "The API did not respond with 200 with a valid payload"
     )
+}
+
+#[tokio::test]
+async fn subscribe_sends_a_confirmation_email_for_valid_data() {
+    let app = TestApp::spawn().await;
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+
+    Mock::given(path("/mail/send"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    let response = app.post_subscriptions(body.into()).await;
+
+    assert_eq!(200, response.status().as_u16())
 }
 
 #[tokio::test]
