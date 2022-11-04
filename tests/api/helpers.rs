@@ -27,6 +27,7 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 
 pub struct TestApp {
     pub address: String,
+    pub port: u16,
     pub db_pool: PgPool,
     pub email_server: MockServer,
 }
@@ -51,7 +52,7 @@ impl TestApp {
         // Test TCP listener
         let tcp_listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
         let port = tcp_listener.local_addr().unwrap().port();
-        let address = format!("http://127.0.0.1:{port}");
+        let address = format!("http://localhost:{port}");
 
         // Test DB pool with UUID db name
 
@@ -67,10 +68,13 @@ impl TestApp {
             .set_tcp_listener(tcp_listener)
             .build();
 
+        let port = application.port();
+
         let _ = tokio::spawn(application.run_until_stopped());
 
         Self {
             address,
+            port,
             db_pool,
             email_server,
         }

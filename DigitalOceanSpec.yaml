@@ -13,6 +13,9 @@ services:
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${newsletter.DATABASE_URL}
+      - key: APPLICATION_BASE_URL
+        scope: RUN_TIME
+        value: ${newsletter.APPLICATION_BASE_URL}
     # Relative to the repository root
     dockerfile_path: Dockerfile
     source_dir: .

@@ -1,4 +1,4 @@
-use std::{io, net::TcpListener};
+use std::{io, net::TcpListener, ops::Deref};
 
 use crate::{
     db::DB,
@@ -8,6 +8,7 @@ use crate::{
 };
 use actix_web::{dev::Server, web, App, HttpServer};
 use sqlx::{postgres::PgPoolOptions, PgPool};
+
 use tracing_actix_web::TracingLogger;
 
 #[derive(Debug)]
@@ -83,11 +84,19 @@ impl ApplicationBuilder {
 
             let address = format!("{host}:{port}");
 
-            TcpListener::bind(&address)
-                .unwrap_or_else(|_| panic!("Couldn't bind TCP listener to {}", &address))
+            TcpListener::bind(&address).unwrap_or_else(|e: std::io::Error| {
+                panic!(
+                    "Couldn't bind TCP listener to {}, because \"{}\"",
+                    &address, e
+                )
+            })
         });
 
+        let base_url = settings.application.base_url;
+
         Application {
+            base_url,
+            port: tcp_listener.local_addr().unwrap().port(),
             db_pool,
             email_client,
             tcp_listener,
@@ -95,7 +104,19 @@ impl ApplicationBuilder {
     }
 }
 
+pub struct ApplicationBaseUrl(pub String);
+
+impl Deref for ApplicationBaseUrl {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 pub struct Application {
+    base_url: String,
+    port: u16,
     db_pool: PgPool,
     tcp_listener: TcpListener,
     email_client: EmailClient,
@@ -106,18 +127,24 @@ impl Application {
         ApplicationBuilder::from_settings(settings)
     }
 
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+
     pub async fn run_until_stopped(self) -> Result<(), std::io::Error> {
         self.run()?.await
     }
 
     pub fn run(self) -> Result<Server, io::Error> {
         let Self {
+            base_url,
             tcp_listener,
             db_pool,
             email_client,
             ..
         } = self;
 
+        let base_url = web::Data::new(ApplicationBaseUrl(base_url));
         let db_pool = web::Data::new(db_pool);
         let email_client = web::Data::new(email_client);
 
@@ -127,6 +154,7 @@ impl Application {
                 .route("/health_check", web::get().to(health_check))
                 .route("/subscriptions", web::post().to(subscribe))
                 .route("/subscriptions/confirm", web::get().to(confirm))
+                .app_data(base_url.clone())
                 .app_data(db_pool.clone())
                 .app_data(email_client.clone())
         })
