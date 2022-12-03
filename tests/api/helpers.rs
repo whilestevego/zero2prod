@@ -26,6 +26,7 @@ static TRACING: Lazy<()> = Lazy::new(|| {
     }
 });
 
+#[derive(Debug)]
 pub struct ConfirmationLinks {
     pub html: reqwest::Url,
     pub text: reqwest::Url,
