@@ -36,7 +36,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
 
     create_confirmed_subscriber(&app).await;
 
-    Mock::given(path("/email/send"))
+    Mock::given(path("/mail/send"))
         .and(method("POST"))
         .respond_with(ResponseTemplate::new(200))
         .expect(1)
