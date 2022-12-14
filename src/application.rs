@@ -3,7 +3,7 @@ use std::{io, net::TcpListener, ops::Deref};
 use crate::{
     db::DB,
     email_client::EmailClient,
-    routes::{confirm, health_check, subscribe},
+    routes::{confirm, health_check, publish_newsletter, subscribe},
     settings::{ApplicationSettings, Settings},
 };
 use actix_web::{dev::Server, web, App, HttpServer};
@@ -151,6 +151,7 @@ impl Application {
         let server = HttpServer::new(move || {
             App::new()
                 .wrap(TracingLogger::default())
+                .route("/newsletters", web::post().to(publish_newsletter))
                 .route("/health_check", web::get().to(health_check))
                 .route("/subscriptions", web::post().to(subscribe))
                 .route("/subscriptions/confirm", web::get().to(confirm))
