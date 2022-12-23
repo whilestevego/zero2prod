@@ -144,16 +144,16 @@ impl TestApp {
     }
 
     pub async fn find_or_insert_test_user(&self) -> (String, String) {
-        match sqlx::query!("SELECT username, password FROM users LIMIT 1",)
+        match sqlx::query!("SELECT username, password_hash FROM users LIMIT 1",)
             .fetch_one(&self.db_pool)
             .await
         {
-            Ok(row) => (row.username, row.password),
+            Ok(row) => (row.username, row.password_hash),
             Err(_) => sqlx::query!(
                 r#"
-                    INSERT INTO users (id, username, password)
+                    INSERT INTO users (id, username, password_hash)
                     VALUES ($1, $2, $3)
-                    RETURNING username, password
+                    RETURNING username, password_hash
                 "#,
                 Uuid::now_v7(),
                 Uuid::now_v7().to_string(),
@@ -161,7 +161,7 @@ impl TestApp {
             )
             .fetch_one(&self.db_pool)
             .await
-            .map(|row| (row.username, row.password))
+            .map(|row| (row.username, row.password_hash))
             .expect("Failed to get or create test user."),
         }
     }
