@@ -1,4 +1,4 @@
-use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
+use argon2::{password_hash::SaltString, Argon2, Params, PasswordHasher};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -19,10 +19,14 @@ impl TestUser {
 
     pub async fn insert(&self, db_pool: &PgPool) -> String {
         let salt = SaltString::generate(&mut rand::thread_rng());
-        let password_hash = Argon2::default()
-            .hash_password(self.password.as_bytes(), &salt)
-            .unwrap()
-            .to_string();
+        let password_hash = Argon2::new(
+            argon2::Algorithm::Argon2id,
+            argon2::Version::V0x13,
+            Params::new(15000, 2, 1, None).unwrap(),
+        )
+        .hash_password(self.password.as_bytes(), &salt)
+        .unwrap()
+        .to_string();
 
         sqlx::query!(
             r#"

@@ -10,6 +10,7 @@ use reqwest::{
 };
 use secrecy::{ExposeSecret, Secret};
 use sqlx::PgPool;
+use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use crate::{domain::SubscriberEmail, email_client::EmailClient, error_chain_fmt};
@@ -176,21 +177,31 @@ async fn validate_credentials(
     db_pool: &PgPool,
     credentials: Credentials,
 ) -> Result<Uuid, PublishError> {
-    let (id, expected_password_hash) = get_stored_credentials(db_pool, &credentials.username)
-        .await
-        .map_err(PublishError::UnexpectedError)?
-        .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username.")))?;
+    let mut id = None;
+    let mut expected_password_hash = Secret::new(
+        "$argon2id$v=19$m=15000,t=2,p=1$\
+        gZiV/M1gPc22ElAH/Jh1Hw$\
+        CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno"
+            .into(),
+    );
 
-    let current_span = tracing::Span::current();
+    if let Some((stored_id, store_password_hash)) =
+        get_stored_credentials(db_pool, &credentials.username)
+            .await
+            .map_err(PublishError::UnexpectedError)?
+    {
+        id = Some(stored_id);
+        expected_password_hash = store_password_hash
+    }
 
-    tokio::task::spawn_blocking(move || {
-        current_span.in_scope(|| verify_password_hash(expected_password_hash, credentials.password))
+    spawn_blocking_with_tracing(move || {
+        verify_password_hash(expected_password_hash, credentials.password)
     })
     .await
     .context("Failed to spawn blocking task.")
     .map_err(PublishError::UnexpectedError)??;
 
-    Ok(id)
+    id.ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username.")))
 }
 
 #[tracing::instrument(name = "Get stored credentials", skip(db_pool, username))]
@@ -233,4 +244,14 @@ fn verify_password_hash(
         )
         .context("Invalid password.")
         .map_err(PublishError::AuthError)
+}
+
+pub fn spawn_blocking_with_tracing<F, R>(f: F) -> JoinHandle<R>
+where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+{
+    let current_span = tracing::Span::current();
+
+    tokio::task::spawn_blocking(move || current_span.in_scope(f))
 }
