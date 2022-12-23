@@ -13,6 +13,8 @@ use zero2prod::{
     telemetry::{get_subscriber, init_subscriber},
 };
 
+use crate::test_user::TestUser;
+
 static TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter_level = "info".to_string();
     let subscriber_name = "test".to_string();
@@ -33,6 +35,7 @@ pub struct ConfirmationLinks {
 }
 
 pub struct TestApp {
+    pub test_user: TestUser,
     pub address: String,
     pub port: u16,
     pub db_pool: PgPool,
@@ -79,12 +82,17 @@ impl TestApp {
 
         let _ = tokio::spawn(application.run_until_stopped());
 
-        Self {
+        let app = Self {
+            test_user: TestUser::generate(),
             address,
             port,
             db_pool,
             email_server,
-        }
+        };
+
+        app.test_user.insert(&app.db_pool).await;
+
+        app
     }
 
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
@@ -106,11 +114,9 @@ impl TestApp {
     }
 
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
-        let (username, password) = self.find_or_insert_test_user().await;
-
         reqwest::Client::new()
             .post(&format!("{}/newsletters", &self.address))
-            .basic_auth(username, Some(password))
+            .basic_auth(&self.test_user.username, Some(&self.test_user.password))
             .json(&body)
             .send()
             .await
@@ -141,29 +147,6 @@ impl TestApp {
         let text = get_link(body["content"][1]["value"].as_str().unwrap());
 
         ConfirmationLinks { html, text }
-    }
-
-    pub async fn find_or_insert_test_user(&self) -> (String, String) {
-        match sqlx::query!("SELECT username, password_hash FROM users LIMIT 1",)
-            .fetch_one(&self.db_pool)
-            .await
-        {
-            Ok(row) => (row.username, row.password_hash),
-            Err(_) => sqlx::query!(
-                r#"
-                    INSERT INTO users (id, username, password_hash)
-                    VALUES ($1, $2, $3)
-                    RETURNING username, password_hash
-                "#,
-                Uuid::now_v7(),
-                Uuid::now_v7().to_string(),
-                Uuid::now_v7().to_string(),
-            )
-            .fetch_one(&self.db_pool)
-            .await
-            .map(|row| (row.username, row.password_hash))
-            .expect("Failed to get or create test user."),
-        }
     }
 }
 
