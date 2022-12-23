@@ -1,4 +1,4 @@
-use crate::helpers::TestApp;
+use crate::test_app::TestApp;
 
 // `tokio::test` is the testing equivalent of `tokio::main`.
 // It also spares you from having to specify the `#[test]` attribute.

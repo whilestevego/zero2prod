@@ -3,7 +3,7 @@ use wiremock::{
     Mock, ResponseTemplate,
 };
 
-use crate::helpers::TestApp;
+use crate::test_app::TestApp;
 
 #[tokio::test]
 async fn confirmations_without_token_are_rejected_with_a_400() {

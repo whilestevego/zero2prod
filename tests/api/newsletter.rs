@@ -4,7 +4,7 @@ use wiremock::{
     Mock, ResponseTemplate,
 };
 
-use crate::helpers::{ConfirmationLinks, TestApp};
+use crate::test_app::{ConfirmationLinks, TestApp};
 
 #[tokio::test]
 async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
