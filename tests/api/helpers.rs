@@ -106,9 +106,11 @@ impl TestApp {
     }
 
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        let (username, password) = self.find_or_insert_test_user().await;
+
         reqwest::Client::new()
             .post(&format!("{}/newsletters", &self.address))
-            .basic_auth(Uuid::new_v4(), Some(Uuid::new_v4()))
+            .basic_auth(username, Some(password))
             .json(&body)
             .send()
             .await
@@ -139,6 +141,29 @@ impl TestApp {
         let text = get_link(body["content"][1]["value"].as_str().unwrap());
 
         ConfirmationLinks { html, text }
+    }
+
+    pub async fn find_or_insert_test_user(&self) -> (String, String) {
+        match sqlx::query!("SELECT username, password FROM users LIMIT 1",)
+            .fetch_one(&self.db_pool)
+            .await
+        {
+            Ok(row) => (row.username, row.password),
+            Err(_) => sqlx::query!(
+                r#"
+                    INSERT INTO users (id, username, password)
+                    VALUES ($1, $2, $3)
+                    RETURNING username, password
+                "#,
+                Uuid::now_v7(),
+                Uuid::now_v7().to_string(),
+                Uuid::now_v7().to_string(),
+            )
+            .fetch_one(&self.db_pool)
+            .await
+            .map(|row| (row.username, row.password))
+            .expect("Failed to get or create test user."),
+        }
     }
 }
 
