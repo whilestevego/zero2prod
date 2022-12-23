@@ -23,6 +23,7 @@ name = "zero2prod"
 [dependencies]
 actix-web = "4.1.0"
 anyhow = "1.0.66"
+argon2 = { version = "0.4.1", features = ["std"] }
 base64 = "0.20.0"
 chrono = "0.4.22"
 config = "0.13.2"
@@ -31,7 +32,6 @@ reqwest = { version = "0.11.11", features = ["json", "rustls-tls"], default-feat
 secrecy = { version = "0.8.0", features = ["serde"] }
 serde = { version = "1.0.144", features = ["derive"] }
 serde-aux = "4.0.0"
-sha3 = "0.10.6"
 sqlx = { version = "0.6.2", features = ["runtime-actix-rustls", "macros", "offline", "postgres", "uuid", "chrono", "migrate"] }
 thiserror = "1.0.37"
 tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread"] }
