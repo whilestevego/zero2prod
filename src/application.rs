@@ -3,7 +3,7 @@ use std::{io, net::TcpListener, ops::Deref};
 use crate::{
     db::DB,
     email_client::EmailClient,
-    routes::{confirm, health_check, publish_newsletter, subscribe},
+    routes::{confirm, health_check, home, publish_newsletter, subscribe},
     settings::{ApplicationSettings, Settings},
 };
 use actix_web::{dev::Server, web, App, HttpServer};
@@ -155,6 +155,7 @@ impl Application {
                 .route("/health_check", web::get().to(health_check))
                 .route("/subscriptions", web::post().to(subscribe))
                 .route("/subscriptions/confirm", web::get().to(confirm))
+                .route("/", web::get().to(home))
                 .app_data(base_url.clone())
                 .app_data(db_pool.clone())
                 .app_data(email_client.clone())
