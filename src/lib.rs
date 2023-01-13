@@ -7,5 +7,6 @@ pub mod routes;
 pub mod settings;
 pub mod stuff;
 pub mod telemetry;
+pub mod views;
 
 pub use stuff::*;

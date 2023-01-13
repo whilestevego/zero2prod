@@ -1,7 +1,7 @@
-use actix_web::{http::header::ContentType, HttpResponse};
+use maud::Markup;
 
-pub async fn login_form() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type(ContentType::html())
-        .body(include_str!("login.html"))
+use crate::views;
+
+pub async fn login_form() -> actix_web::Result<Markup> {
+    Ok(views::login::get())
 }
