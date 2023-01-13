@@ -27,6 +27,7 @@ argon2 = { version = "0.4.1", features = ["std"] }
 base64 = "0.20.0"
 chrono = "0.4.22"
 config = "0.13.2"
+maud = { version = "0.24.0", features = ["actix-web"] }
 rand = { version = "0.8.5", features = ["std_rng"] }
 reqwest = { version = "0.11.11", features = ["json", "rustls-tls"], default-features = false }
 secrecy = { version = "0.8.0", features = ["serde"] }
