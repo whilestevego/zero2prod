@@ -18,8 +18,8 @@ pub struct FormData {
 
 #[tracing::instrument(skip(form, db_pool), fields(username=tracing::field::Empty, user_id=tracing::field::Empty))]
 pub async fn login(
+    db_pool: web::Data<PgPool>,
     form: web::Form<FormData>,
-    db_pool: web::Data<&PgPool>,
 ) -> Result<HttpResponse, LoginError> {
     let credentials = Credentials {
         username: form.0.username,
@@ -62,5 +62,13 @@ impl ResponseError for LoginError {
             LoginError::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             LoginError::AuthError(_) => StatusCode::UNAUTHORIZED,
         }
+    }
+
+    fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
+        let encoded_error = urlencoding::Encoded::new(self.to_string());
+
+        HttpResponse::SeeOther()
+            .insert_header((LOCATION, format!("/login?error={}", encoded_error)))
+            .finish()
     }
 }
